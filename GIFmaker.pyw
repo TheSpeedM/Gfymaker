@@ -74,10 +74,6 @@ gifParam = {
     }
 
 def main():
-    # Change the current working directory to the capturesFolder, 
-    # but if you couldn't guess that I don't know what you're doing here    
-    os.chdir(capturesFolder)
-
     videoName = getVid()
     if videoName != "Nothing":
         auth_headers = authHeaders()
@@ -100,6 +96,10 @@ def getVid():
     
     fileHighest = 0
     
+    # Change the current working directory to the capturesFolder, 
+    # but if you couldn't guess that I don't know what you're doing here    
+    os.chdir(capturesFolder)
+
     # Walk (or run, that's based on your computer speed lmao) through the capturesFolder to find all the captures
     # There are no folders in the capturesFolder so I haven't done anything to work with folders whoops
     for foldername, subfolder, filenames in os.walk(capturesFolder):
