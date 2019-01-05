@@ -1,31 +1,24 @@
 #! python
-# GIFmaker.py - easy automatically creating GIFs from captures (name is a WIP)
+# GIFmaker.py - easy automatically creating GIFs from videos (name is a WIP)
 # I really can't think of a better name
 
 # This is my first project with working with an API so I have no idea what I'm doing
 
 # Just some normal imports
-import os, re, logging, json, time, shutil
+import os, re, logging, json, time, shutil, sys
 
 # This is because I think requests is too hard to type
 import requests as req
 
-logging.disable()
 # For debug text (only used while making the program of course) (reminder to self: turn off when you're done)
 logging.basicConfig(level=logging.DEBUG, format=' %(asctime)s - %(levelname)s - %(message)s')
 
-# The regex for finding the date in the name (based on standard 'Windows Gamebar' file naming)
-# 1-2: month, 3-4: day, 5: year, 6-7: hour, 8-9: minute, 10-11: seconds, 12: am/pm
-dateRegex = re.compile(r'(\d)?(\d)_(\d)?(\d)_(\d\d\d\d)\s(\d)?(\d)_(\d)?(\d)_(\d)?(\d)\s(A?P?)')
-# This variable is to seperate the normal groups from the groups that are optional in the regex
-optionalGroups = [1, 3, 6, 8, 10]
-
 # Standard name for the file where it will save the gfys
 gfyUrlName = 'gfyUrl.txt'    
-# This is the standard folder for 'Windows Gamebar' captures
-capturesFolder = os.path.join(os.environ['HOMEPATH'], r'Videos\Captures')
-# The folder for the archived captures
-capturesArchiveFolder = os.path.join(os.environ['HOMEPATH'], r'Videos\Archive')
+# This is the folder where you have your videos
+videoFolder = os.path.join(os.environ['HOMEPATH'], r'Videos\Videos')
+# The folder for the archived videos
+videoArchiveFolder = os.path.join(os.environ['HOMEPATH'], r'Videos\Archive')
 # This is the folder where the program itself is located
 # If you want the .txt file with the URLs to be dropped somewhere else, 
 # change the below variable to the path of the desired destination
@@ -42,10 +35,10 @@ checkUrl = 'https://api.gfycat.com/v1/gfycats/fetch/status/{}'
 # URL for what your GfyCat URL is going to be
 gfyUrl = 'https://gfycat.com/{}'
 
-
 # Format for the text file
 gfyUrlText = "Video: {}\nURL: https://gfycat.com/{}\n\n"
 
+# Client ID and -Secret should be requested at https://developers.gfycat.com/
 bodyTemplate = {
     "grant_type": "password",
     "client_id": "<CLIENT ID HERE>",
@@ -74,12 +67,8 @@ gifParam = {
     }
 
 def main():
-    # Change the current working directory to the capturesFolder, 
-    # but if you couldn't guess that I don't know what you're doing here    
-    os.chdir(capturesFolder)
-
     videoName = getVid()
-    if videoName != "Nothing":
+    if videoName != None:
         auth_headers = authHeaders()
     
         gfyID = getUrl(auth_headers)
@@ -89,74 +78,17 @@ def main():
         writeFile(gfyID, videoName)
 
         movetoArchive(videoName)
-
-# Get video latest from capturesFolder
-# Latest video based on standard 'Windows Gamebar' file naming
-def getVid():
-    # Declaring the variables used in this function
-    fileMatch = []
-    fileDate = []
-    fileLookup = {}
-    
-    fileHighest = 0
-    
-    # Walk (or run, that's based on your computer speed lmao) through the capturesFolder to find all the captures
-    # There are no folders in the capturesFolder so I haven't done anything to work with folders whoops
-    for foldername, subfolder, filenames in os.walk(capturesFolder):
-        # Loop through all of the files in the filenames variable
-        for i in range (len(filenames)):
-            optionalGroupsTEMP = []
-
-            # More debug stuff, ignore pls
-            logging.debug("File currently working on: " + filenames[i])
-
-            # Search the filename (of this loop) for the right date specification (see where I declared the regex)
-            fileMatch.append(dateRegex.search(filenames[i]))
-
-            # Only do something if the regex actually found something
-            if fileMatch[i] != None:
-                for j in range(len(optionalGroups)):
-                    # If the optional group didn't find anything, it gets set to 0
-                    if fileMatch[i].group(optionalGroups[j]) == None:
-                        optionalGroupsTEMP.append('0')
-                    # Else set it to the value it found
-                    else:
-                        optionalGroupsTEMP.append(fileMatch[i].group(optionalGroups[j]))
-
-                # If it ends with AM set it to 0
-                if fileMatch[i].group(12) == 'A':
-                    optionalGroupsTEMP.append('0')
-                # PM becomes 1
-                elif fileMatch[i].group(12) == 'P':
-                    optionalGroupsTEMP.append('1')
-
-                # Create a large number of the date it found
-                # Format is yyyy mm dd a/p hh mm ss
-                # (so '31_12_2018 11_3_42 PM' becomes '201812311110342')
-                fileDate.append(int(fileMatch[i].group(5) + optionalGroupsTEMP[0] + fileMatch[i].group(2) + optionalGroupsTEMP[1] + fileMatch[i].group(4) + optionalGroupsTEMP[5] + fileMatch[i].group(7) + optionalGroupsTEMP[3] + fileMatch[i].group(9) + optionalGroupsTEMP[4] + fileMatch[i].group(11)))
-
-                # Assign the large date number to a dictonairy,
-                # so we can easily look up what filename belongs to what date
-                fileLookup[fileDate[i]] = filenames[i]
-
-                # If the previously biggest number (highest date) is smaller than the date we just generated,
-                # replace it with the new number
-                if fileHighest < fileDate[i]:
-                    fileHighest = fileDate[i]
-            
-            # This is so that the amount of things in fileDate stays matched up with fileHighest
-            else:
-                fileDate.append(None)
-    
-    # Debugging, if you're reading this you haven't learned from the previous debugging code comment i made ;D
-    logging.debug("Highest reached number: " + str(fileHighest))
-    logging.debug("File that belongs to that number: " + fileLookup[fileHighest])
-
-    if fileLookup[fileHighest] == None:
-        return "Nothing"
     else:
-        # Returning the filename of with the highest date
-        return fileLookup[fileHighest]
+        sys.exit()
+
+# Get video latest from videoFolder
+def getVid():
+    videos = os.listdir(videoFolder)
+    
+    if videos != []:
+        return videos[0]
+    else:
+        return None
 
 # Create auth header
 def authHeaders():
@@ -187,6 +119,10 @@ def getUrl(headers):
 
 # Upload file to GfyCat
 def uploadFile(gfyID, videoName):
+    # Change the current working directory to the videoFolder, 
+    # but if you couldn't guess that I don't know what you're doing here    
+    os.chdir(videoFolder)
+
     uploadStatus = "encoding"
     
     # Open the video and write it to a dict
@@ -201,6 +137,7 @@ def uploadFile(gfyID, videoName):
     # Ignore pls
     logging.debug(res.text)
 
+    # Check if it is done uploading
     while uploadStatus != "complete":
         checkReturn = req.get(checkUrl.format(gfyID))
         uploadStatus = checkReturn.json().get("task")
@@ -211,19 +148,19 @@ def uploadFile(gfyID, videoName):
 
 # Write URL to text document
 def writeFile(gfyID, videoName):
-    os.chdir(programFolder)
+    os.chdir(videoFolder)
 
     with open(gfyUrlName, 'a+') as f:
         f.write(gfyUrlText.format(videoName, gfyID))
 
-# Move old capture files to the archive        
+# Move old capture files to the archive
 def movetoArchive(videoName):
-    os.chdir(capturesFolder)
+    os.chdir(videoFolder)
 
-    if os.path.exists(capturesArchiveFolder) == False:
-        os.mkdir(capturesArchiveFolder)
+    if os.path.exists(videoArchiveFolder) == False:
+        os.mkdir(videoArchiveFolder)
 
-    shutil.move(videoName, capturesArchiveFolder)
+    shutil.move(videoName, videoArchiveFolder)
 
 # This is so it starts with 'main()' when you run it
 if __name__ == "__main__":
